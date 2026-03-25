@@ -3,6 +3,7 @@ package imd.ufrn.storage;
 import imd.ufrn.common.network.CommunicationFactory;
 import imd.ufrn.common.network.CommunicationStrategy;
 import imd.ufrn.common.network.MessageListener;
+import imd.ufrn.common.protocol.HttpParser;
 
 public class StorageMain implements MessageListener{
     private String meuId;
@@ -17,44 +18,42 @@ public class StorageMain implements MessageListener{
         String protocolo = "TCP";
         // int minhaPorta = 8082;
         // String protocolo = args[0]; 
+        
         int minhaPorta = Integer.parseInt(args[0]);
-        String meuId = args[1];
+        String meuIdSuffix = args[1];
+        String meuId = "STORAGE_" + meuIdSuffix;
 
-        StorageMain meuStorage = new StorageMain(meuId);
+        System.out.println("=== Iniciando " + meuId + " ===");
         
-        CommunicationStrategy rede = CommunicationFactory.createStrategy(protocolo, "STORAGE" + meuId );
+        StorageMain meuStorage = new StorageMain(meuId); 
+        CommunicationStrategy rede = CommunicationFactory.createStrategy(protocolo, meuId);
         
-        rede.sendMessage("127.0.0.1", 8080, "REGISTRO;" + "STORAGE_" + meuId + ";127.0.0.1:" + minhaPorta);
+        // MUDANÇA AQUI: Enviando via rota "/registro"
+        rede.sendMessage("127.0.0.1", 8080, "/registro", meuId + ";127.0.0.1:" + minhaPorta);
+        
         rede.startServer(minhaPorta, meuStorage);
     }
 
     @Override
-    public void onMessageReceived(String message, String remetenteIp) {
-        // System.out.println("[STORAGE-NEGÓCIO] Recebi de " + remetenteIp + " o payload: " + message);
-        String[] partes = message.split(";");
-        String comando = partes[0];
+    public String onMessageReceived(String rawMessage, String remetenteIp) {
+        HttpParser parser = new HttpParser(rawMessage);
+        String rota = parser.getRoute();
+        String corpo = parser.getBody();
+        
+        if (rota == null) return "HTTP/1.1 400 Bad Request\r\n\r\n";
 
-        switch (comando) {
-            case "ELEICAO_VENCEU" -> {
-                int novaGeracao = Integer.parseInt(partes[1]);
-                generationState.promoteToLeader(novaGeracao);
-                System.out.println("[STORAGE-NEGÓCIO] Recebi a notícia de que a eleição foi vencida! Nova geração é " + novaGeracao);
-
-            }
-            case "NOVO_LIDER" -> {
-                int novaGeracao = Integer.parseInt(partes[1]);
-                String enderecoLider = partes[1];
-                generationState.updateLeader(novaGeracao, enderecoLider);
-                System.out.println("[STORAGE-NEGÓCIO] Recebi a notícia de que um novo líder foi eleito! Endereço do novo líder: " + enderecoLider);
-            }
-            case "SALVAR_MENSAGEM" -> {
-                int geracaoMensagem = Integer.parseInt(partes[1]);
-                String payload = partes[2];
-                generationState.processMessage(geracaoMensagem, payload);
-                System.out.println("[STORAGE-NEGÓCIO] Recebi uma mensagem para salvar! Geração da mensagem: " + geracaoMensagem + " | Payload: " + payload);
-            }
-            default -> {
-            }
+        // Agora roteamos baseados na URL do HTTP!
+        if (rota.equals("/eleicao")) {
+            int novaGeracao = Integer.parseInt(corpo);
+            generationState.promoteToLeader(novaGeracao);
+        } 
+        else if (rota.equals("/salvar")) {
+            String[] partes = corpo.split(";", 2);
+            int geracaoDaMensagem = Integer.parseInt(partes[0]);
+            String payload = partes[1];
+            
+            generationState.processMessage(geracaoDaMensagem, payload);
         }
+        return "HTTP/1.1 200 OK\r\n\r\nMensagem processada";
     }
 }

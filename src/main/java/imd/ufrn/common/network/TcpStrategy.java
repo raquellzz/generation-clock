@@ -36,12 +36,22 @@ public class TcpStrategy implements CommunicationStrategy {
     }
 
     @Override
-    public void sendMessage(String ip, int port, String message) {
+    public void sendMessage(String ip, int port, String route, String payload) {
         try (Socket socket = new Socket(ip, port);
              PrintWriter output = new PrintWriter(socket.getOutputStream(), true)) {
             
-            System.out.println("[" + nomeComponente + "] Enviando pacote TCP para " + ip + ":" + port + " -> " + message);
-            output.println(message);
+            // Construindo o envelope HTTP "na unha"
+            String httpMessage = "POST " + route + " HTTP/1.1\r\n" +
+                                 "Host: " + ip + ":" + port + "\r\n" +
+                                 "Content-Length: " + payload.length() + "\r\n" +
+                                 "Content-Type: text/plain\r\n" +
+                                 "\r\n" + 
+                                 payload;
+
+            System.out.println("[" + nomeComponente + "] Enviando requisição para " + route);
+            
+            output.print(httpMessage);
+            output.flush();
             
         } catch (IOException e) {
             System.err.println("[" + nomeComponente + "] Falha ao enviar mensagem para " + ip + ":" + port);
@@ -50,17 +60,45 @@ public class TcpStrategy implements CommunicationStrategy {
 
     private void handleClient(Socket conexao, MessageListener listener) {
         try (conexao;
-            BufferedReader input = new BufferedReader(new InputStreamReader(conexao.getInputStream()))) {
-             
-            String msg = input.readLine();
-            String ip = conexao.getInetAddress().getHostAddress();
+             BufferedReader input = new BufferedReader(new InputStreamReader(conexao.getInputStream()));
+             PrintWriter output = new PrintWriter(conexao.getOutputStream(), true)) {
 
-            if (msg != null && listener != null) {
-                listener.onMessageReceived(msg, ip);
+            String ip = conexao.getInetAddress().getHostAddress();
+            StringBuilder rawHttp = new StringBuilder();
+            String linha;
+            int tamanhoCorpo = 0;
+
+            while ((linha = input.readLine()) != null && !linha.isEmpty()) {
+                rawHttp.append(linha).append("\r\n");
+                
+                if (linha.toLowerCase().startsWith("content-length:")) {
+                    tamanhoCorpo = Integer.parseInt(linha.substring(15).trim());
+                }
+            }
+            rawHttp.append("\r\n");
+
+            if (tamanhoCorpo > 0) {
+                char[] bufferCorpo = new char[tamanhoCorpo];
+                int charsLidos = input.read(bufferCorpo, 0, tamanhoCorpo);
+                
+                if (charsLidos > 0) {
+                    rawHttp.append(new String(bufferCorpo, 0, charsLidos));
+                }
+            }
+
+            if (rawHttp.length() > 0 && listener != null) {
+                String respostaHttp = listener.onMessageReceived(rawHttp.toString(), ip);
+                
+                if (respostaHttp != null && !respostaHttp.isEmpty()) {
+                    output.print(respostaHttp);
+                } else {
+                    output.print("HTTP/1.1 200 OK\r\n\r\n");
+                }
+                output.flush();
             }
 
         } catch (IOException e) {
-            System.err.println("Erro na Virtual Thread: " + e.getMessage());
+            System.err.println("Erro processando cliente: " + e.getMessage());
         }
     }
 }

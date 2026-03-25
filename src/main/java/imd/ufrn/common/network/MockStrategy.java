@@ -15,8 +15,7 @@ public class MockStrategy implements CommunicationStrategy {
     }
 
     @Override
-    public void sendMessage(String ip, int port, String message) {
-        System.out.println("[" + nomeComponente + "] Enviando MOCK para " + ip + ":" + port + " -> " + message);
-        
+    public void sendMessage(String ip, int port, String route, String payload) {
+        System.out.println("[" + nomeComponente + "] Enviando MOCK para " + ip + ":" + port + " -> " + payload);
     }
 }
