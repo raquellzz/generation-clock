@@ -9,14 +9,14 @@ public class CommunicationFactory {
 
         switch (protocolType.toUpperCase()) {
             case "UDP":
-                // return new UdpStrategy(); 
+                return new UdpStrategy(nomeComponente); 
             case "TCP":
                 return new TcpStrategy(nomeComponente);
             case "GRPC":
                 // return new GrpcStrategy();
             default:
-                // throw new IllegalArgumentException("Protocolo não suportado: " + protocolType);
-                return new MockStrategy(nomeComponente);
+                throw new IllegalArgumentException("Protocolo não suportado: " + protocolType);
+                // return new MockStrategy(nomeComponente);
         }
     }
 

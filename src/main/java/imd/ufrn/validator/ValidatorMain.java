@@ -5,10 +5,15 @@ import imd.ufrn.common.network.CommunicationStrategy;
 import imd.ufrn.common.network.MessageListener;
 
 public class ValidatorMain implements MessageListener{
+    private final CommunicationStrategy rede;
+
+    public ValidatorMain(CommunicationStrategy rede) {
+        this.rede = rede;
+    }
     public static void main(String[] args) {
         System.out.println("=== Iniciando Validator (Componente A) ===");
         
-        String protocolo = "TCP";
+        String protocolo = "UDP";
         // int minhaPorta = 8081;
         // String protocolo = args[0]; 
         
@@ -18,11 +23,12 @@ public class ValidatorMain implements MessageListener{
 
         System.out.println("=== Iniciando " + meuId + " ===");
         
-        ValidatorMain meuValidator = new ValidatorMain();
-        CommunicationStrategy rede = CommunicationFactory.createStrategy(protocolo, meuId);
+        CommunicationStrategy rede = CommunicationFactory.createStrategy("UDP", meuId);
+        
+        // 3. Injeta a rede no Validator
+        ValidatorMain meuValidator = new ValidatorMain(rede); 
         
         rede.sendMessage("127.0.0.1", 8080, "/registro", meuId + ";127.0.0.1:" + minhaPorta);
-        
         rede.startServer(minhaPorta, meuValidator);
     }
 
@@ -52,10 +58,10 @@ public class ValidatorMain implements MessageListener{
                 
                 System.out.println("-> Devolvendo mensagem aprovada para o Gateway...");
                 
-                imd.ufrn.common.network.CommunicationStrategy redeRetorno = 
-                    imd.ufrn.common.network.CommunicationFactory.createStrategy("TCP", "VALIDATOR_RETORNO");
+                // imd.ufrn.common.network.CommunicationStrategy redeRetorno = 
+                //     imd.ufrn.common.network.CommunicationFactory.createStrategy("TCP", "VALIDATOR_RETORNO");
                 
-                redeRetorno.sendMessage("127.0.0.1", 8080, "/salvar_chat", corpo);
+                rede.sendMessage("127.0.0.1", 8080, "/salvar_chat", corpo);
             }
         }
         return "HTTP/1.1 200 OK\r\n\r\nOK";

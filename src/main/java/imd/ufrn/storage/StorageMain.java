@@ -3,7 +3,6 @@ package imd.ufrn.storage;
 import imd.ufrn.common.network.CommunicationFactory;
 import imd.ufrn.common.network.CommunicationStrategy;
 import imd.ufrn.common.network.MessageListener;
-import imd.ufrn.common.protocol.HttpParser;
 
 public class StorageMain implements MessageListener{
     private String meuId;
@@ -15,7 +14,7 @@ public class StorageMain implements MessageListener{
     public static void main(String[] args) {
         System.out.println("=== Iniciando Storage (Componente B - Generation Clock) ===");
         
-        String protocolo = "TCP";
+        String protocolo = "UDP";
         // int minhaPorta = 8082;
         // String protocolo = args[0]; 
         
@@ -36,16 +35,25 @@ public class StorageMain implements MessageListener{
 
     @Override
     public String onMessageReceived(String rawMessage, String remetenteIp) {
-        HttpParser parser = new HttpParser(rawMessage);
+        imd.ufrn.common.protocol.HttpParser parser = new imd.ufrn.common.protocol.HttpParser(rawMessage);
+        
+        String metodo = parser.getMethod();
         String rota = parser.getRoute();
         String corpo = parser.getBody();
         
         if (rota == null) return "HTTP/1.1 400 Bad Request\r\n\r\n";
 
+        if (rota.equals("/ping")) {
+            System.out.println("[STORAGE] Recebeu GET /ping de " + remetenteIp);
+            return "HTTP/1.1 200 OK\r\n\r\nPONG";
+        }
+
         // Agora roteamos baseados na URL do HTTP!
         if (rota.equals("/eleicao")) {
             int novaGeracao = Integer.parseInt(corpo);
             generationState.promoteToLeader(novaGeracao);
+            System.out.println("[STORAGE] Eleição realizada. Nova geração: " + novaGeracao);
+            return "HTTP/1.1 200 OK\r\n\r\nEleição processada";
         } 
         else if (rota.equals("/salvar")) {
             String[] partes = corpo.split(";", 2);
@@ -53,6 +61,8 @@ public class StorageMain implements MessageListener{
             String payload = partes[1];
             
             generationState.processMessage(geracaoDaMensagem, payload);
+            System.out.println("[STORAGE] Mensagem salva: " + payload + " (Geração: " + geracaoDaMensagem + ")");
+            return "HTTP/1.1 200 OK\r\n\r\nMensagem salva";
         }
         return "HTTP/1.1 200 OK\r\n\r\nMensagem processada";
     }
