@@ -20,12 +20,8 @@ public class GatewayMain implements MessageListener{
         this.rede = rede;
     }
     public static void main(String[] args) {
-        // args[0] = "UDP", args[1] = "8080"
+        String protocolo = args[0];
         
-        // String protocolo = args[0]; 
-        // int porta = Integer.parseInt(args[1]);
-
-        String protocolo = "UDP"; 
         int portaGateway = 8080;
 
         CommunicationStrategy rede = CommunicationFactory.createStrategy(protocolo, "API_GATEWAY");
@@ -131,12 +127,6 @@ public class GatewayMain implements MessageListener{
             return "HTTP/1.1 503 Service Unavailable\r\n\r\n";
         }
 
-        // String[] partesIpPorta = enderecoStorage.split(":");
-        // String ip = partesIpPorta[0];
-        // int porta = Integer.parseInt(partesIpPorta[1]);
-
-        // System.out.println("[ROTEADOR] Encaminhando para o Banco em " + enderecoStorage);
-
         String lider = getOuElegerLider(storagesVivos);
 
         String[] partesIpPorta = lider.split(":");
@@ -146,25 +136,19 @@ public class GatewayMain implements MessageListener{
         
         rede.sendMessage(partesIpPorta[0], Integer.parseInt(partesIpPorta[1]), "/salvar", payloadComGeracao);
         return "HTTP/1.1 200 OK\r\n\r\nEnviado ao Banco";
-        // rede.sendMessage(ip, porta, "/salvar", payloadComGeracao);
-        // return "HTTP/1.1 200 OK\r\n\r\nEnviado ao Banco";
     }
 
     private synchronized String getOuElegerLider(List<String> storagesVivos) {
-        // Se o líder atual caiu, ou se o sistema acabou de ligar e não tem líder:
         if (currentLeader == null || !storagesVivos.contains(currentLeader)) {
             
-            // 1. O Relógio Avança!
             currentGeneration.incrementAndGet();
             
-            // 2. Elege o novo líder (Ordenamos para ser determinístico, sempre pega o primeiro da lista)
             Collections.sort(storagesVivos);
             currentLeader = storagesVivos.get(0);
 
             System.out.println("\n[CLOCK] ⏰ O Relógio Avançou! Nova Geração: " + currentGeneration.get());
             System.out.println("[ELEIÇÃO] Novo Banco Líder promovido: " + currentLeader + "\n");
 
-            // 3. Avisa o Storage eleito de que agora ele manda na geração atual
             String[] partes = currentLeader.split(":");
             rede.sendMessage(partes[0], Integer.parseInt(partes[1]), "/eleicao", String.valueOf(currentGeneration.get()));
         }

@@ -1,0 +1,25 @@
+syntax = "proto3";
+option java_multiple_files = true;
+option java_package = "imd.ufrn.grpc";
+option java_outer_classname = "SistemaProto";
+
+message MensagemRequest {
+    string rota = 1;
+    string payload = 2;
+}
+
+message StatusResponse {
+    int32 statusCode = 1;
+    string mensagem = 2;
+}
+
+message RegistroRequest {
+    string nomeComponente = 1;
+    string endereco = 2;
+}
+
+service DistribuidoService {
+    rpc ProcessarMensagem (MensagemRequest) returns (StatusResponse);
+    
+    rpc RegistrarComponente (RegistroRequest) returns (StatusResponse);
+}

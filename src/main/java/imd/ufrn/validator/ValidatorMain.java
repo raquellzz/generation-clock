@@ -13,17 +13,15 @@ public class ValidatorMain implements MessageListener{
     public static void main(String[] args) {
         System.out.println("=== Iniciando Validator (Componente A) ===");
         
-        String protocolo = "UDP";
-        // int minhaPorta = 8081;
-        // String protocolo = args[0]; 
+        String protocolo = args[0];
+        int minhaPorta = Integer.parseInt(args[1]);
+        String meuIdSuffix = args[2];
         
-        int minhaPorta = Integer.parseInt(args[0]);
-        String meuIdSuffix = args[1];
         String meuId = "VALIDATOR_" + meuIdSuffix;
 
         System.out.println("=== Iniciando " + meuId + " ===");
         
-        CommunicationStrategy rede = CommunicationFactory.createStrategy("UDP", meuId);
+        CommunicationStrategy rede = CommunicationFactory.createStrategy(protocolo, meuId);
         
         // 3. Injeta a rede no Validator
         ValidatorMain meuValidator = new ValidatorMain(rede); 
@@ -50,16 +48,13 @@ public class ValidatorMain implements MessageListener{
             System.out.println("-> Iniciando validação do payload: [" + corpo + "]");
             
             if (corpo == null || corpo.trim().isEmpty()) {
-                System.out.println("-> ❌ REJEITADA: A mensagem está vazia.");
+                System.out.println("-> REJEITADA: A mensagem está vazia.");
             } else if (corpo.toLowerCase().contains("palavrao")) {
-                System.out.println("-> ❌ REJEITADA: A mensagem contém conteúdo impróprio.");
+                System.out.println("-> REJEITADA: A mensagem contém conteúdo impróprio.");
             } else {
-                System.out.println("-> ✅ APROVADA: A mensagem é válida e limpa!");
+                System.out.println("-> APROVADA: A mensagem é válida e limpa!");
                 
                 System.out.println("-> Devolvendo mensagem aprovada para o Gateway...");
-                
-                // imd.ufrn.common.network.CommunicationStrategy redeRetorno = 
-                //     imd.ufrn.common.network.CommunicationFactory.createStrategy("TCP", "VALIDATOR_RETORNO");
                 
                 rede.sendMessage("127.0.0.1", 8080, "/salvar_chat", corpo);
             }

@@ -13,7 +13,7 @@ public class CommunicationFactory {
             case "TCP":
                 return new TcpStrategy(nomeComponente);
             case "GRPC":
-                // return new GrpcStrategy();
+                return new GrpcStrategy(nomeComponente);
             default:
                 throw new IllegalArgumentException("Protocolo não suportado: " + protocolType);
                 // return new MockStrategy(nomeComponente);
